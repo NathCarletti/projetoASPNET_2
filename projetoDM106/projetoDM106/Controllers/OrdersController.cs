@@ -10,12 +10,54 @@ using System.Web.Http;
 using System.Web.Http.Description;
 using projetoDM106.Models;
 using System.Security.Principal;
-
+using projetoDM106.CRMClient;
+using projetoDM106.br.com.correios.ws;
 namespace projetoDM106.Controllers
 {
+    [Authorize]
+    [RoutePrefix("api/orders")]
     public class OrdersController : ApiController
     {
+        
         private projetoDM106Context db = new projetoDM106Context();
+
+        [ResponseType(typeof(string))]
+        [HttpGet]
+        [Route("frete")]
+        public IHttpActionResult CalculaFrete()
+        {
+            string frete;
+            CalcPrecoPrazoWS correios = new CalcPrecoPrazoWS();
+            cResultado resultado = correios.CalcPrecoPrazo("", "","40010", "37540000", "37002970", "1", 1, 30, 30, 30, 30, "N", 100, "S");
+            if (resultado.Servicos[0].Erro.Equals("0"))
+            {
+                frete = "Valor do frete: " + resultado.Servicos[0]
+                .Valor + " - Prazo de entrega: " + resultado.Servicos[0].PrazoEntrega + " dia(s)";
+                return Ok(frete);
+            }
+            else
+            {
+                return BadRequest("Código do erro: " + resultado.Servicos[0].Erro + "-" + resultado.Servicos[0].MsgErro);
+            }
+        }
+
+        [ResponseType(typeof(string))]
+
+        [HttpGet]
+        [Route("cep")]
+        public IHttpActionResult ObtemCEP()
+        {
+            CRMRestClient crmClient = new CRMRestClient();
+            Customer customer = crmClient.GetCustomerByEmail(User.Identity.Name);
+            if (customer != null)
+            {
+                return Ok(customer.zip);
+            }
+            else
+            {
+                return BadRequest("Falha ao consultar o CRM");
+            }
+        }
 
         // GET: api/Orders
         public IQueryable<Order> GetOrders()
